@@ -58,6 +58,16 @@ namespace Rozproszone___Serwer
             }
         }
 
+        private static void Menu()
+        {
+            Console.WriteLine($"{LOAD}<URL>\tZaładuj plik słownikowy");
+            Console.WriteLine($"{LIST}\t\tWyswietl listę klientów z ich statusem");
+            Console.WriteLine($"{START}\tRozpocznij proces szukania hasła, poprzed wysłanie podzielonych danych wszystkim klientom");
+            Console.WriteLine($"{STOP}\t\tPrzerwij połączenie z wszystkimi klientami");
+            Console.WriteLine($"{DISCONNECT}<ID>\tRozłącz wybranego klienta");
+            Console.WriteLine($"");
+        }
+
         public static int CollectData(string url)
         {
             if (!File.Exists(url))
@@ -136,12 +146,30 @@ namespace Rozproszone___Serwer
             return percentage % 10 == 0;
         }
 
+        private static void CloseSpecific(int thread)
+        {
+            if (connectedClients.TryGetValue(thread, out Socket targetSocket))
+            {
+                if (targetSocket.Connected)
+                {
+                    targetSocket.Close();
+                }
+                else
+                {
+                    Console.WriteLine($"Klient {thread} jest nie podłączony!");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Thread with ID " + thread + " not found.");
+            }
+        }
+
         private static void clear()
         {
             List<int> idList = GetConnectedThreadsId();
             foreach (var thread in idList)
             {
-                Console.WriteLine($"Wysylam do {thread}, {STOP}");
                 SendToSpecificThread(thread, STOP);
                 if (connectedClients.TryGetValue(thread, out Socket targetSocket))
                 {
@@ -197,6 +225,9 @@ namespace Rozproszone___Serwer
                     }
                 }
                 Console.WriteLine("Nie udalo sie znalezc hasla!");
+                clear();
+                checkedWords.Clear();
+                return;
             }
             else
             {
@@ -210,13 +241,12 @@ namespace Rozproszone___Serwer
             while (true)
             {
                 sndMsg = Console.ReadLine();
-                Console.WriteLine(sndMsg);
 
                 switch(sndMsg)
                 {
                     case "?":
                     case "help":
-                        Console.WriteLine("help menu");
+                        Menu();
                         break;
                     case string s when s.StartsWith("AT+"):
                         ProceedRequest(s);
@@ -253,6 +283,8 @@ namespace Rozproszone___Serwer
                     clear();
                     break;
                 case string s when s.StartsWith(DISCONNECT):
+
+                    CloseSpecific(int.Parse(s.Replace(DISCONNECT, "")));
                     break;
                 default:
                     break;
